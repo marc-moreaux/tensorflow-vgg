@@ -102,7 +102,7 @@ class Vgg19:
         self.argmax_flat = tf.range(0, self.prob.get_shape()[0]) * self.prob.get_shape()[1] + tf.cast(self.argmax,tf.int32)
         self.to_derive   = tf.gather(tf.reshape(self.prob, [-1]), self.argmax_flat)
         self.weights     = tf.gradients(self.to_derive, self.pool5)
-        self.weights     = tf.reduce_sum(self.weights, [2, 3])
+        self.weights     = tf.reduce_sum(self.weights, [0, 2, 3])
 
         # Visualize results of CAM
         # self.vis         = tf.mul(self.weights, self.pool5)
