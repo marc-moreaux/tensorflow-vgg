@@ -93,16 +93,16 @@ class Vgg19:
         self.argmax      = tf.argmax(self.prob,1)
 
         # (2) consider idx if given
-        # batch_size = self.conv1_1.get_shape().as_list()[0]
-        # tmp = np.zeros(batch_size, np.int64) -1
-        # self.idx = tf.placeholder_with_default(tmp, shape=[batch_size], name="idxs")
-        # self.argmax = tf.cond(self.idx[0] < 0, lambda: self.argmax, lambda: self.idx)
+        batch_size = self.conv1_1.get_shape().as_list()[0]
+        tmp = np.zeros(batch_size, np.int64) -1
+        self.idx = tf.placeholder_with_default(tmp, shape=[batch_size], name="idxs")
+        self.argmax = tf.cond(self.idx[0] < 0, lambda: self.argmax, lambda: self.idx)
 
         # Flatten idx to derive, derive wrt pool5
         self.argmax_flat = tf.range(0, self.prob.get_shape()[0]) * self.prob.get_shape()[1] + tf.cast(self.argmax,tf.int32)
         self.to_derive   = tf.gather(tf.reshape(self.prob, [-1]), self.argmax_flat)
         self.weights     = tf.gradients(self.to_derive, self.pool5)
-        self.weights     = tf.reduce_sum(self.weights, [0, 2, 3])
+        self.weights     = tf.reduce_sum(self.weights, [2, 3])
 
         # Visualize results of CAM
         # self.vis         = tf.mul(self.weights, self.pool5)
@@ -110,6 +110,8 @@ class Vgg19:
         self.vis         = tf.mul(tf.reshape(self.pool5, [7,7,-1]),tf.reshape(self.weights, [-1]))
         self.vis         = tf.reshape(self.vis, [-1,7,7,512])
         self.vis         = tf.reduce_sum(self.vis, 3)
+
+        # WHY NOT WORKING WITH MANY CLASSES ???
 
 
     def avg_pool(self, bottom, name):
