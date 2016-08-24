@@ -101,17 +101,39 @@ class Vgg19:
         # Flatten idx to derive, derive wrt pool5
         self.argmax_flat = tf.range(0, self.prob.get_shape()[0]) * self.prob.get_shape()[1] + tf.cast(self.argmax,tf.int32)
         self.to_derive   = tf.gather(tf.reshape(self.prob, [-1]), self.argmax_flat)
-        self.weights     = tf.gradients(self.to_derive, self.pool5)
-        self.weights     = tf.reduce_sum(self.weights, [2, 3])
+        self.weights     = tf.gradients(self.to_derive, self.pool5) # THIS FUNCTION MIGHT BE FALSE (A)
+        self.weights     = tf.reduce_sum(self.weights, [0, 2, 3])
 
         # Visualize results of CAM
-        # self.vis         = tf.mul(self.weights, self.pool5)
-        # self.vis         = tf.reduce_sum(self.vis, 3)
-        self.vis         = tf.mul(tf.reshape(self.pool5, [7,7,-1]),tf.reshape(self.weights, [-1]))
-        self.vis         = tf.reshape(self.vis, [-1,7,7,512])
+        pool5_reshape    = tf.transpose(self.pool5, perm=[1,2,0,3])
+        pool5_reshape    = tf.reshape(pool5_reshape, [7,7,-1])
+        self.vis         = tf.mul(pool5_reshape,tf.reshape(self.weights, [-1]))
+        self.vis         = tf.reshape(   self.vis, [7,7,-1,512])
+        self.vis         = tf.transpose( self.vis, perm=[2,0,1,3])
         self.vis         = tf.reduce_sum(self.vis, 3)
 
-        # WHY NOT WORKING WITH MANY CLASSES ???
+        # # (A) From what I understand, tf.gradient will apply :
+        # # \sum_i(\frac{\delta y_i}{\delta X}) \forall x \in X
+        # # In our case we only want : 
+        # # \frac{\delta y_i}{\delta X}) \forall y_i \in Y, \forall x \in X_i
+        # argmax      = tf.argmax(vgg.prob,1)
+        # to_derive   = tf.gather( vgg.prob[0,:], tf.slice(argmax, [0], [1]) )
+        # wrt         = tf.slice(vgg.pool5, [0,0,0,0], [1,7,7,512])
+        # weights     = tf.gradients(to_derive, vgg.pool5) # STILL NOT GOOD WEIGHTS HERE
+
+        # # IF MORE THAN ONE IMAGE, DERIVE OTHERS
+        # i = tf.constant(1)
+        # while_condition = lambda i: tf.less(i, 2)
+        # def body(i):
+        #   #Do something here which you want to do in your loop
+        #   to_derive   = tf.gather(vgg.prob[i,:], argmax[i])
+        #   new_weights = tf.gradients(to_derive, vgg.pool5)
+        #   tf.concat(0, [weights, new_weights])
+        #   #increment i
+        #   return [tf.add(i, 1)]
+
+        # #do the loop:
+        # r = tf.while_loop(while_condition, body, [i])
 
 
     def avg_pool(self, bottom, name):
